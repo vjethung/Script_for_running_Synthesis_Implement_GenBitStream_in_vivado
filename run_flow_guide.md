@@ -81,6 +81,12 @@ Mở cả 2 file `.tcl`, tìm và sửa biến `PRJ_NAME` khớp với tên dự
 set PRJ_NAME "Tên_Dự_Án_Của_Bạn"
 ```
 
+```tcl
+# Chọn số job bạn muốn chạy trong cả run_flow.tcl và gen_bit.tcl
+-jobs "Số job"
+# Ví dụ: -jobs 8 
+```
+
 > **Lưu ý:** Biến này sẽ tự động cập nhật mọi đường dẫn file và thư mục kết quả.
 
 ### 1c. Cấp quyền chạy cho file Shell (chỉ làm 1 lần)
