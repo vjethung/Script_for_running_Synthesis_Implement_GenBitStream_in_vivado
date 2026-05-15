@@ -18,7 +18,7 @@ mkdir -p "${LOG_DIR}"
 rm -f "${SCRIPT_DIR}"/run_flow_*.backup.* 2>/dev/null || true
 rm -f "${SCRIPT_DIR}/vivado.log" "${SCRIPT_DIR}/vivado.jou" 2>/dev/null || true
 
-${VIVADO} -mode batch \
+${VIVADO} -mode batch -notrace \
           -source  "${SCRIPT_DIR}/run_flow.tcl" \
           -log     "${LOG_DIR}/run_flow_${TIMESTAMP}.log" \
           -journal "${LOG_DIR}/run_flow_${TIMESTAMP}.jou"

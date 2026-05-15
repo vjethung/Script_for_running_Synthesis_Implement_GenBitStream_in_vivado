@@ -3,31 +3,30 @@
 # 🛠️ Hướng Dẫn: Chạy Vivado Synthesis + Implementation Bằng Terminal
 
 > **Áp dụng cho:** Mọi Vivado project (không phụ thuộc vào dự án cụ thể)
-> **Yêu cầu:** Có các file `run_flow.tcl`, `run.sh`, `gen_bit.tcl`, `bitstream.sh` trong thư mục project
+> **Yêu cầu:** Có đầy đủ các file script trong thư mục project
 
 > [!IMPORTANT]
-> **Quy trình khuyến nghị:**
+> **Quy trình khuyến nghị kết hợp GUI & Terminal:**
 >
-> 1. Sử dụng **Vivado GUI** để xây dựng Block Design (BD), chỉnh sửa RTL và chạy Simulation.
-> 2. Khi đến bước **Synthesis** và **Implementation**, hãy sử dụng **Terminal** (thông qua bộ script này) để tối ưu hiệu năng, tránh treo máy và dễ quản lý log.
+> 1. Dùng **Vivado GUI** để tạo Block Design, viết RTL, chạy Simulation.
+> 2. Khi sửa Custom IP → chạy **`./repack_ip.sh`** để cập nhật, sau đó mở GUI kết nối port mới & thêm ILA.
+> 3. Khi cần Synthesis + Implementation → chạy **`./run.sh`** qua Terminal.
 
 ---
 
 ## 📁 Cấu trúc cần có
 
+```
+<your_project_folder>/
 ├── logs/               ← Chứa lịch sử log (timestamped)
-
 ├── run.sh              ← Chạy Synthesis + Implementation
-
 ├── bitstream.sh        ← CHỈ chạy Generate Bitstream (nhanh)
-
+├── repack_ip.sh        ← Repackage Custom IP sau khi sửa source
 ├── run_flow.tcl        ← Script chính (Synth + Impl)
-
 ├── gen_bit.tcl         ← Script phụ (chỉ Bitstream)
-
-├──`<project>`.xpr       ← File project Vivado
-
-└── Other folders   ← Các folder được tạo ra sau khi tạo project Vivado bằng gui
+├── repack_ip.tcl       ← Script repackage IP
+└── <project>.xpr       ← File project Vivado
+```
 
 ---
 
@@ -52,8 +51,7 @@ cd /đường/dẫn/đến/thư/mục/project
 ```
 
 **Cách 3 — Từ VS Code:**
-
-> Menu **Terminal → New Terminal** (hoặc ``Ctrl + ` ``)
+> Menu **Terminal → New Terminal** (hoặc `` Ctrl + ` ``)
 > Terminal sẽ tự mở đúng thư mục đang làm việc.
 
 ---
@@ -62,57 +60,85 @@ cd /đường/dẫn/đến/thư/mục/project
 
 Chỉ cần làm **1 lần** khi setup project mới.
 
-### 1a. Sửa file Shell (`run.sh` & `bitstream.sh`) — trỏ đúng Vivado
+### 1a. Sửa file Shell (`run.sh`, `bitstream.sh`, `repack_ip.sh`) — trỏ đúng Vivado
 
-Mở cả 2 file `.sh`, sửa dòng `VIVADO=` trỏ đến bản cài đặt trên máy bạn:
+Mở **tất cả** các file `.sh`, sửa dòng `VIVADO=`:
 
 ```sh
-# Nếu sử dung trên server thì không cần thay đổi
-# Sửa trong cả run.sh và bitstream.sh
+# Sửa trong run.sh, bitstream.sh và repack_ip.sh, nếu chạy trên server thì không cần sửa
 VIVADO=/home/<user>/tools/Xilinx/Vivado/<version>/bin/vivado
 ```
 
-### 1b. Sửa file TCL (`run_flow.tcl` & `gen_bit.tcl`) — Đặt tên Project
+### 1b. Sửa file TCL (`run_flow.tcl`, `gen_bit.tcl`, `repack_ip.tcl`) — Cấu hình Dự án & IP
 
-Mở cả 2 file `.tcl`, tìm và sửa biến `PRJ_NAME` khớp với tên dự án của bạn (không kèm đuôi `.xpr`):
-
-```tcl
-# Sửa trong cả run_flow.tcl và gen_bit.tcl
-set PRJ_NAME "Tên_Dự_Án_Của_Bạn"
-```
+Mở các file `.tcl`, tìm phần cấu hình ở đầu file và sửa:
 
 ```tcl
-# Chọn số job bạn muốn chạy trong cả run_flow.tcl và gen_bit.tcl
--jobs "Số job"
-# Ví dụ: -jobs 8 
-```
+# 1. Đặt tên dự án — sửa trong run_flow.tcl và gen_bit.tcl
+set PRJ_NAME "Tên_Dự_Án_Của_Bạn"   # tên file .xpr không kèm đuôi
 
-> **Lưu ý:** Biến này sẽ tự động cập nhật mọi đường dẫn file và thư mục kết quả.
+# 2. Đường dẫn IP packager project — sửa trong repack_ip.tcl
+set IP_PRJ_PATH [file normalize "${SCRIPT_DIR}/../<đường_dẫn>/edit_<ip>_v1_0.xpr"]
+set IP_REPO_DIR [file normalize "${SCRIPT_DIR}/../<đường_dẫn>/<ip>_1_0"]
+```
 
 ### 1c. Cấp quyền chạy cho file Shell (chỉ làm 1 lần)
 
 ```bash
-chmod +x run.sh bitstream.sh
+chmod +x run.sh bitstream.sh repack_ip.sh
 ```
 
 ---
 
-## 🚀 BƯỚC 2: Chạy Flow
+## 🔁 BƯỚC 2 *(Tùy chọn)*: Workflow khi sửa Custom IP
+
+> [!NOTE]
+> **Bỏ qua BƯỚC 2 nếu bạn không sửa Custom IP.**
+> Nếu chỉ sửa RTL hoặc chỉ muốn build lại → chuyển thẳng sang **BƯỚC 3**.
+
+Thực hiện **tuần tự** khi cần thêm port, sửa giao diện, hoặc thay đổi logic IP:
+
+### Bước 2a — Sửa source code IP
+Chỉnh sửa các file source (`.sv`, `.v`, `.vhd`) trong thư mục IP source của bạn bằng editor tùy thích (VS Code, vim, ...).
+Đường dẫn thư mục IP source có thể xem trong `IP_REPO_DIR` tại `repack_ip.tcl`.
+
+### Bước 2b — Repackage IP
+```bash
+./repack_ip.sh
+```
+Script sẽ mở IP Packager project, phát hiện port/interface mới từ HDL và cập nhật `component.xml`.
+
+### Bước 2c — Mở GUI và cập nhật Block Design
+```bash
+vivado <project>.xpr &
+```
+Trong GUI:
+- **Kết nối port mới** vào Block Design (BD)
+- **Thêm debug probes** vào ILA nếu cần debug
+- **Lưu** (`Ctrl+S`) và **đóng** Vivado
+
+---
+
+## 🚀 BƯỚC 3: Chạy Build
+
+Dù có hay không sửa IP, bước cuối cùng luôn là:
 
 ```bash
 ./run.sh
 ```
 
-Đó là tất cả. Vivado sẽ tự chạy synthesis → implementation → timing report.
+Vivado sẽ tự chạy: **Synthesis → Implementation → Timing Report**.
+
 
 ---
 
-## 📊 BƯỚC 3: Đọc kết quả
+## 📊 BƯỚC 4: Đọc kết quả
 
 ### Kết quả in trực tiếp ra terminal:
 
 ```
 >>> [1/6] Opening project ...
+>>> [1.5/6] Checking for IP upgrades ...
 >>> [2/6] Launching Synthesis (synth_1) ...
 >>> [3/6] Waiting for Synthesis to complete ...
 >>> Synthesis STATUS: synth_design Complete!
@@ -131,38 +157,38 @@ chmod +x run.sh bitstream.sh
 
 ### Các file kết quả tạo ra:
 
-| File                                               | Nội dung                                              |
-| -------------------------------------------------- | ------------------------------------------------------ |
-| `<project>.runs/impl_1/timing_summary_final.rpt` | Báo cáo timing đầy đủ                            |
-| `logs/run_flow_YYYYMMDD_HHMMSS.log`              | Log toàn bộ quá trình chạy (lưu theo thời gian) |
-| `<project>.runs/synth_1/runme.log`               | Log chi tiết synthesis                                |
-| `<project>.runs/impl_1/runme.log`                | Log chi tiết implementation                           |
+| File | Nội dung |
+|------|----------|
+| `<project>.runs/impl_1/timing_summary_final.rpt` | Báo cáo timing đầy đủ |
+| `logs/run_flow_YYYYMMDD_HHMMSS.log` | Log toàn bộ quá trình chạy |
+| `logs/repack_ip_YYYYMMDD_HHMMSS.log` | Log repackage IP |
+| `<project>.runs/synth_1/runme.log` | Log chi tiết synthesis |
+| `<project>.runs/impl_1/runme.log` | Log chi tiết implementation |
+
+---
+
+## ⚡ BƯỚC 5: Chỉ tạo Bitstream (Nếu đã Impl xong)
+
+Nếu đã chạy `./run.sh` thành công và chỉ muốn tạo file `.bit`:
+
+```bash
+./bitstream.sh
+```
+
+> **Lưu ý:** Script kiểm tra trạng thái Implementation trước khi chạy. Nếu chưa xong sẽ báo lỗi.
 
 ---
 
 ## 🔄 Reset Run — Tự Động
 
-Script **tự động detect** trạng thái run trước khi launch:
+Script `run.sh` **tự động detect** và reset run cũ trước khi launch mới:
 
 ```
 >>> synth_1 status: 'synth_design Complete!' — auto-resetting ...
 >>> impl_1 status: 'route_design Complete!' — auto-resetting ...
 ```
 
-> Không cần làm gì thêm — script xử lý tự động mỗi lần chạy.
-
----
-
-## ⚡ BƯỚC 4: Chỉ tạo Bitstream (Nếu đã Impl xong)
-
-Nếu bạn đã chạy `./run.sh` thành công và chỉ muốn tạo file `.bit` mà không muốn chạy lại từ đầu:
-
-```bash
-chmod +x bitstream.sh
-./bitstream.sh
-```
-
-> **Lưu ý:** Script này sẽ kiểm tra xem Implementation đã xong chưa trước khi chạy. Nếu chưa xong, nó sẽ báo lỗi.
+> Không cần làm gì thêm — script xử lý tự động.
 
 ---
 
@@ -171,8 +197,7 @@ chmod +x bitstream.sh
 ### ❌ `bash: ./run.sh: Permission denied`
 
 ```bash
-chmod +x run.sh
-./run.sh
+chmod +x run.sh bitstream.sh repack_ip.sh
 ```
 
 ### ❌ `vivado: command not found`
@@ -190,23 +215,30 @@ export PATH=/home/<user>/tools/Xilinx/Vivado/<version>/bin:$PATH
 grep -i "error\|critical" <project>.runs/synth_1/runme.log
 ```
 
-# Xem các đường vi phạm timing (thay `<project>` bằng tên dự án của bạn)
+### ❌ `TIMING CLOSURE: FAILED`
+```bash
+grep -A 20 "Slack (VIOLATED)" <project>.runs/impl_1/timing_summary_final.rpt | head -80
+```
 
-grep -A 20 "Slack (VIOLATED)" `<project>`.runs/impl_1/timing_summary_final.rpt | head -80
+### ❌ Port mới không thấy trong Block Design sau khi sửa IP
+→ Cần chạy đúng thứ tự: `./repack_ip.sh` → mở GUI kết nối port → `./run.sh`
 
 ### ❌ Synthesis không chạy lại sau khi sửa RTL
-
-→ Bỏ comment `reset_run synth_1` và `reset_run impl_1` trong `run_flow.tcl`
+→ Script tự động reset — nếu muốn giữ nguyên synthesis, hãy comment dòng `reset_run synth_1` trong `run_flow.tcl`
 
 ---
 
 ## 📋 Checklist Port Sang Project Mới
 
-- [ ] Copy `run_flow.tcl` và `run.sh` vào thư mục project mới
-- [ ] Sửa `VIVADO=` trong `run.sh` và `bitstream.sh` (nếu khác version)
-- [ ] Sửa `PRJ_NAME` trong `run_flow.tcl` và `gen_bit.tcl` thành tên project mới
+- [ ] Copy tất cả file `.sh` và `.tcl` vào thư mục project mới
+- [ ] Sửa `VIVADO=` trong `run.sh`, `bitstream.sh`, `repack_ip.sh`
+- [ ] Sửa `PRJ_NAME` trong `run_flow.tcl` và `gen_bit.tcl`
+- [ ] Sửa `IP_PRJ_PATH` và `IP_REPO_DIR` trong `repack_ip.tcl`
 - [ ] Kiểm tra tên run (`synth_1`, `impl_1`) khớp với project
-- [ ] Chạy `chmod +x run.sh bitstream.sh`
+- [ ] Chạy `chmod +x run.sh bitstream.sh repack_ip.sh`
 - [ ] Mở terminal tại thư mục project → `./run.sh`
 
 ---
+
+**© Copyright 2026 by Viet Hung Nguyen K67 (EDABK)**
+*Developed for Zipformer FPGA Acceleration Project.*

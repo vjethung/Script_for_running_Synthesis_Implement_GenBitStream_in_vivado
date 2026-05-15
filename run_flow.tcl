@@ -11,6 +11,11 @@
 #  Mục đích: chạy toàn bộ Synthesis + Implementation
 #            bằng Vivado batch mode (terminal), không cần GUI.
 #
+#  Workflow:
+#    1. (Nếu sửa IP) ./repack_ip.sh    → Repackage IP
+#    2. (Nếu cần)   Mở GUI, kết nối port mới vào BD, thêm ILA
+#    3.             ./run.sh            → Synth + Impl + Timing
+#
 #  Cách chạy:
 #    vivado -mode batch -source run_flow.tcl
 #    (xem hướng dẫn đầy đủ ở run_flow_guide.md)
@@ -19,11 +24,42 @@
 set PRJ_ROOT [file dirname [file normalize [info script]]]
 set PRJ_NAME "Zip_implement"
 
+# --- CẤU HÌNH IP REPO ---
+# Chỉ dùng để upgrade_ip nếu IP có phiên bản mới hơn trong catalog
+set IP_REPO_PATH "${PRJ_ROOT}/../SIM_VIVADO/ip_repo/attn_core_1_0"
+# ---------------------------------------------------------
+
 # ----------------------------------------------------------
 # BƯỚC 1: MỞ PROJECT
 # ----------------------------------------------------------
 puts ">>> \[1/6\] Opening project ${PRJ_NAME}.xpr ..."
 open_project ${PRJ_ROOT}/${PRJ_NAME}.xpr
+
+# ----------------------------------------------------------
+# BƯỚC 1.5: UPGRADE IP NẾU CÓ PHIÊN BẢN MỚI
+#   Chạy sau khi đã repack IP bằng ./repack_ip.sh
+#   Sau đó generate_target để BD nhận port mới.
+# ----------------------------------------------------------
+puts ">>> \[1.5/6\] Checking for IP upgrades ..."
+update_ip_catalog -quiet
+
+set dirty_ips [get_ips -filter {IS_LOCKED == 1 || UPGRADE_VERSIONS != ""}]
+if {[llength $dirty_ips] > 0} {
+    puts ">>> Upgrading IPs: ${dirty_ips}"
+    upgrade_ip $dirty_ips
+    export_ip_user_files -of_objects [get_ips $dirty_ips] -no_script -sync -force -quiet
+
+    # Regenerate Block Design targets để cập nhật port/interface mới vào wrapper
+    # Chỉ lấy các file BD chính (không lấy các nested BD bên trong IP như DDR4)
+    set bd_files [get_files -filter {IS_GENERATED == 0 && EXTENSION == "bd"}]
+    if {[llength $bd_files] > 0} {
+        puts ">>> Regenerating Block Design output products for: ${bd_files}"
+        generate_target all $bd_files
+        export_ip_user_files -of_objects $bd_files -no_script -sync -force -quiet
+    }
+} else {
+    puts ">>> All IPs are up-to-date."
+}
 
 # ----------------------------------------------------------
 # BƯỚC 2: TỰ ĐỘNG RESET NẾU RUN ĐÃ COMPLETE
@@ -102,7 +138,7 @@ if {$wns >= 0} {
     puts ">>> TIMING CLOSURE: FAILED (timing violations exist)"
 }
 puts ">>> ======================================="
-puts ">>> Full report: ${PRJ_ROOT}/timing_summary_final.rpt"
+puts ">>> Full report: ${PRJ_ROOT}/${PRJ_NAME}.runs/impl_1/timing_summary_final.rpt"
 
 # ----------------------------------------------------------
 # BƯỚC 6 (TUỲ CHỌN): GENERATE BITSTREAM
