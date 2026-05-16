@@ -7,8 +7,13 @@
 #  Mục đích: Chỉ chạy bước Generate Bitstream sau khi Impl đã xong
 # ============================================================
 
+# ============================================================
+# CONFIGURATION - CHỈNH SỬA TẠI ĐÂY
+# ============================================================
+set PRJ_NAME   "Zip_implement" ;# Tên file project (.xpr) không kèm đuôi
+# ============================================================
+
 set PRJ_ROOT [file dirname [file normalize [info script]]]
-set PRJ_NAME "Zip_implement"
 
 # Mở Project
 puts ">>> Opening project ${PRJ_NAME}.xpr ..."

@@ -15,14 +15,23 @@
 #    5. ./run.sh            → Synth + Impl
 # ============================================================
 
+# ============================================================
+# CONFIGURATION - CHỈNH SỬA TẠI ĐÂY
+# ============================================================
+set IP_NAME    "attn_core"     ;# Tên IP
+set TOP_MODULE "attn_core"     ;# Tên module Top của IP
+# Đường dẫn tương đối từ vị trí script này đến thư mục chứa các IP
+set RELATIVE_IP_REPO_PATH "../SIM_VIVADO/ip_repo" 
+# ============================================================
+
 set SCRIPT_DIR  [file dirname [file normalize [info script]]]
-set IP_PRJ_PATH [file normalize "${SCRIPT_DIR}/../SIM_VIVADO/ip_repo/edit_attn_core_v1_0.xpr"]
-set IP_REPO_DIR [file normalize "${SCRIPT_DIR}/../SIM_VIVADO/ip_repo/attn_core_1_0"]
+set IP_PRJ_PATH [file normalize "${SCRIPT_DIR}/${RELATIVE_IP_REPO_PATH}/edit_${IP_NAME}_v1_0.xpr"]
+set IP_REPO_DIR [file normalize "${SCRIPT_DIR}/${RELATIVE_IP_REPO_PATH}/${IP_NAME}_1_0"]
 
 if {![file exists ${IP_PRJ_PATH}]} {
     puts "ERROR: IP packager project not found:"
     puts "       ${IP_PRJ_PATH}"
-    puts "       Please check the path in repack_ip.tcl"
+    puts "       Please check the IP_NAME in repack_ip.tcl"
     exit 1
 }
 
@@ -30,13 +39,23 @@ puts ">>> Opening IP packager project ..."
 puts ">>>   ${IP_PRJ_PATH}"
 open_project ${IP_PRJ_PATH}
 
+# Dọn dẹp các file không tồn tại trên đĩa (stale files) để tránh lỗi Critical Warning
+set stale_files [get_files -filter {IS_AVAILABLE == 0}]
+if {[llength ${stale_files}] > 0} {
+    puts ">>> Removing stale files from project: ${stale_files}"
+    remove_files ${stale_files}
+}
+
 puts ">>> Adding all source files from repo directory to project ..."
-# Đảm bảo mọi file trong src/ và hdl/ đều được đưa vào project
 add_files -norecurse [glob -nocomplain "${IP_REPO_DIR}/src/*.{v,sv,vhd}" "${IP_REPO_DIR}/hdl/*.{v,sv,vhd}"]
+
+# Thiết lập Top Module thủ công để tránh Vivado nhận diện sai
+set_property source_mgmt_mode None [current_project]
+set_property top ${TOP_MODULE} [current_fileset]
 update_compile_order -fileset sources_1
 
 puts ">>> Merging changes into IP definition ..."
-# Chủ động nạp component.xml để tránh lỗi "No core loaded" trong batch mode
+# Chủ động nạp component.xml
 set component_xml [file normalize "${IP_REPO_DIR}/component.xml"]
 set current_core [ipx::open_core ${component_xml}]
 

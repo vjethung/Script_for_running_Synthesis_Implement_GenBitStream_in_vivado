@@ -1,5 +1,9 @@
+#================================================
+# © Copyright 2026 by Viet Hung Nguyen K67 (EDABK)
+#================================================
+
 #!/bin/bash
-# repack_ip.sh — Repackage Custom IP sau khi sửa source code
+# repack_ip.sh — Shortcut to repackage Custom IP
 # Usage: ./repack_ip.sh
 
 VIVADO=/tools/Xilinx/Vivado/2024.1/bin/vivado
@@ -13,7 +17,7 @@ mkdir -p "${LOG_DIR}"
 rm -f "${SCRIPT_DIR}"/run_flow_*.backup.* 2>/dev/null || true
 rm -f "${SCRIPT_DIR}/vivado.log" "${SCRIPT_DIR}/vivado.jou" 2>/dev/null || true
 
-echo ">>> Repackaging IP attn_core ..."
+echo ">>> Starting IP Repackage flow ..."
 echo ">>> Log: ${LOG_DIR}/repack_ip_${TIMESTAMP}.log"
 
 ${VIVADO} -mode batch -notrace \

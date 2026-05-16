@@ -21,12 +21,17 @@
 #    (xem hướng dẫn đầy đủ ở run_flow_guide.md)
 # ============================================================
 
-set PRJ_ROOT [file dirname [file normalize [info script]]]
-set PRJ_NAME "Zip_implement"
+# ============================================================
+# CONFIGURATION - CHỈNH SỬA TẠI ĐÂY
+# ============================================================
+set PRJ_NAME   "Zip_implement" ;# Tên file project (.xpr) không kèm đuôi
+set IP_NAME    "attn_core"     ;# Tên thư mục IP chính
+# Đường dẫn tương đối từ vị trí script này đến thư mục chứa các IP
+set RELATIVE_IP_REPO_PATH "../SIM_VIVADO/ip_repo" 
+# ============================================================
 
-# --- CẤU HÌNH IP REPO ---
-# Chỉ dùng để upgrade_ip nếu IP có phiên bản mới hơn trong catalog
-set IP_REPO_PATH "${PRJ_ROOT}/../SIM_VIVADO/ip_repo/attn_core_1_0"
+set PRJ_ROOT [file dirname [file normalize [info script]]]
+set IP_REPO_PATH "${PRJ_ROOT}/${RELATIVE_IP_REPO_PATH}/${IP_NAME}_1_0"
 # ---------------------------------------------------------
 
 # ----------------------------------------------------------

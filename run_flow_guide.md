@@ -77,10 +77,15 @@ Mở các file `.tcl`, tìm phần cấu hình ở đầu file và sửa:
 # 1. Đặt tên dự án — sửa trong run_flow.tcl và gen_bit.tcl
 set PRJ_NAME "Tên_Dự_Án_Của_Bạn"   # tên file .xpr không kèm đuôi
 
-# 2. Đường dẫn IP packager project — sửa trong repack_ip.tcl
-set IP_PRJ_PATH [file normalize "${SCRIPT_DIR}/../<đường_dẫn>/edit_<ip>_v1_0.xpr"]
-set IP_REPO_DIR [file normalize "${SCRIPT_DIR}/../<đường_dẫn>/<ip>_1_0"]
+# 2. Cấu hình IP — sửa trong repack_ip.tcl
+set IP_NAME    "tên_thư_mục_ip"    ;# Tên IP trong ip_repo
+set TOP_MODULE "tên_module_top"    ;# Tên module chính của IP
+set RELATIVE_IP_REPO_PATH "path/đến/repo" ;# Đường dẫn từ script đến IP repo
 ```
+
+> [!TIP]
+> Script `repack_ip.tcl` hiện đã hỗ trợ **tự động dọn dẹp** các file khai báo sai hoặc không tồn tại (stale files). Bạn không cần lo lắng nếu lỡ xóa file trên đĩa cứng mà quên xóa trong project IP.
+
 
 ### 1c. Cấp quyền chạy cho file Shell (chỉ làm 1 lần)
 
@@ -233,7 +238,7 @@ grep -A 20 "Slack (VIOLATED)" <project>.runs/impl_1/timing_summary_final.rpt | h
 - [ ] Copy tất cả file `.sh` và `.tcl` vào thư mục project mới
 - [ ] Sửa `VIVADO=` trong `run.sh`, `bitstream.sh`, `repack_ip.sh`
 - [ ] Sửa `PRJ_NAME` trong `run_flow.tcl` và `gen_bit.tcl`
-- [ ] Sửa `IP_PRJ_PATH` và `IP_REPO_DIR` trong `repack_ip.tcl`
+- [ ] Sửa `IP_NAME` và `TOP_MODULE` trong `repack_ip.tcl`
 - [ ] Kiểm tra tên run (`synth_1`, `impl_1`) khớp với project
 - [ ] Chạy `chmod +x run.sh bitstream.sh repack_ip.sh`
 - [ ] Mở terminal tại thư mục project → `./run.sh`
