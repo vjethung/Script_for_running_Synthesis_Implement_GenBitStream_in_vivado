@@ -122,7 +122,7 @@ if {[get_property PROGRESS [get_runs impl_1]] != "100%"} {
 puts ">>> Implementation PASSED."
 
 # ----------------------------------------------------------
-# BƯỚC 5: BÁO CÁO TIMING (266.5 MHz check)
+# BƯỚC 5: BÁO CÁO TIMING
 # ----------------------------------------------------------
 puts ">>> \[6/6\] Opening results and generating timing report ..."
 open_run impl_1 -name impl_1
